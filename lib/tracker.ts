@@ -1,0 +1,28 @@
+export type Topic = { id: string; name: string; weight: number; modules: string[] };
+export const TOPICS: Topic[] = [
+  {id:'quant',name:'Quantitative Methods',weight:7.5,modules:['Basics of Multiple Regression and Underlying Assumptions','Evaluating Regression Model Fit and Interpreting Model Results','Model Misspecification','Extensions of Multiple Regression','Time-Series Analysis','Machine Learning','Big Data Projects']},
+  {id:'econ',name:'Economics',weight:7.5,modules:['Currency Exchange Rates: Understanding Equilibrium Value','Economic Growth']},
+  {id:'fsa',name:'Financial Statement Analysis',weight:12.5,modules:['Intercorporate Investments','Employee Compensation: Post Employment and Share-based','Multinational Operations','Analysis of Financial Institutions','Evaluating Quality of Financial Reports','Integration of Financial Statement Analysis Techniques']},
+  {id:'corporate',name:'Corporate Issuers',weight:7.5,modules:['Analysis of Dividends and Share Repurchases','Environmental, Social, and Governance (ESG) Considerations in Investment Analysis','Cost of Capital: Advanced Topics','Corporate Restructuring']},
+  {id:'equity',name:'Equities',weight:12.5,modules:['Equity Valuation: Applications and Processes','Discounted Dividend Valuation','Free Cash Flow Valuation','Market-Based Valuation: Price and Enterprise Value Multiples','Residual Income Valuation','Private Company Valuation']},
+  {id:'fixed',name:'Fixed Income',weight:12.5,modules:['The Term Structure & Interest Rate Dynamics','The Arbitrage Free Valuation Framework','Valuation & Analysis of Bonds with Embedded Options','Credit Analysis Models','Credit Default Swaps']},
+  {id:'derivatives',name:'Derivatives',weight:7.5,modules:['Pricing & Valuation of Forward Commitments','Valuation of Contingent Claims']},
+  {id:'alts',name:'Alternative Investments',weight:7.5,modules:['Introduction to Commodities & Commodity Derivatives','Overview of Types of Real Estate Investment','Investments in Real Estate Through Publicly Traded Securities','Hedge Fund Strategies']},
+  {id:'portfolio',name:'Portfolio Construction',weight:12.5,modules:['Economics and Investment Markets','Analysis of Active Portfolio Management','Exchange-Traded Funds: Mechanics & Applications','Using Multifactor Models','Measuring & Managing Market Risk','Backtesting and Simulation']},
+  {id:'ethics',name:'Ethical and Professional Standards',weight:12.5,modules:['Code of Ethics and Standards of Professional Conduct','Guidance for Standard I: Professionalism','Guidance for Standard II: Integrity of Capital Markets','Guidance for Standard III: Duties to Clients','Guidance for Standard IV: Duties to Employers','Guidance for Standard V: Investment Analysis, Recommendations, and Actions','Guidance for Standard VI: Conflicts of Interest','Guidance for Standard VII: Responsibilities as a CFA Institute Member or CFA Candidate','Application of the Code and Standards: Level II']}
+];
+export const MODULES = TOPICS.flatMap((topic) => topic.modules.map((title,index) => ({id:`${topic.id}-${index+1}`,title,topicId:topic.id,planned: Math.max(4, Math.round((300 / 51) * 2) / 2)})));
+export type Revision = { id:string; moduleId:string; due:string; kind:'Day 1'|'Day 7'|'Day 21'|'Retention'; done:boolean; reward:number };
+export type Log = { id:string; date:string; minutes:number; moduleId:string };
+export type State = { schemaVersion:1; examDate:string|null; setup:boolean; attempts:Record<string,number>; completionDates:Record<string,string>; revisionTasks:Revision[]; logs:Log[]; quizzes:Record<string,{targetDate:string;done:boolean}>; mocks:{id:string;targetDate:string;done:boolean;score:number|null;completedAt:string|null}[]; rest:string[] };
+export const KEY='cfa-l2-tracker-v1';
+export const today=()=>new Date().toISOString().slice(0,10);
+export const emptyState=():State=>({schemaVersion:1,examDate:null,setup:false,attempts:{},completionDates:{},revisionTasks:[],logs:[],quizzes:Object.fromEntries(TOPICS.map(t=>[t.id,{targetDate:'',done:false}])),mocks:Array.from({length:8},(_,i)=>({id:`mock-${i+1}`,targetDate:'',done:false,score:null,completedAt:null})),rest:[]});
+const dateAdd=(d:string,n:number)=>{const x=new Date(`${d}T12:00:00`);x.setDate(x.getDate()+n);return x.toISOString().slice(0,10)};
+const cutoff=(exam:string)=>{const d=new Date(`${exam}T12:00:00`);d.setMonth(d.getMonth()-2);return d.toISOString().slice(0,10)};
+export function makeRevisions(moduleId:string, completed:string, exam:string|null):Revision[] { const basic:[number,Revision['kind'],number][]=[[1,'Day 1',20/153],[7,'Day 7',20/153],[21,'Day 21',20/153]]; const tasks=basic.map(([days,kind,reward])=>({id:`${moduleId}-${days}`,moduleId,due:dateAdd(completed,days),kind,done:false,reward})); if(exam){ const end=cutoff(exam); for(let n=42; dateAdd(completed,n)<=end;n+=21) tasks.push({id:`${moduleId}-${n}`,moduleId,due:dateAdd(completed,n),kind:'Retention',done:false,reward:0}); } return tasks; }
+export function firstPass(s:State){return TOPICS.reduce((sum,t)=>{const ms=MODULES.filter(m=>m.topicId===t.id); const credit=ms.reduce((x,m)=>x+(s.completionDates[m.id]?1:(s.attempts[m.id]||0?0.5:0)),0)/ms.length; return sum+(t.weight/100*50*credit)},0)}
+export function revisionCredit(s:State){return Math.min(20,s.revisionTasks.filter(t=>t.done).reduce((x,t)=>x+t.reward,0))}
+export function mockCredit(s:State){return s.mocks.filter(m=>m.done).length*3.75}
+export function readiness(s:State){return Math.min(100,firstPass(s)+revisionCredit(s)+mockCredit(s))}
+export function weekDays(){const d=new Date(); const day=d.getDay()||7; d.setDate(d.getDate()-day+1); return Array.from({length:7},(_,i)=>dateAdd(d.toISOString().slice(0,10),i));}
