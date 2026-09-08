@@ -25,4 +25,4 @@ export function firstPass(s:State){return TOPICS.reduce((sum,t)=>{const ms=MODUL
 export function revisionCredit(s:State){return Math.min(20,s.revisionTasks.filter(t=>t.done).reduce((x,t)=>x+t.reward,0))}
 export function mockCredit(s:State){return s.mocks.filter(m=>m.done).length*3.75}
 export function readiness(s:State){return Math.min(100,firstPass(s)+revisionCredit(s)+mockCredit(s))}
-export function weekDays(){const d=new Date(); const day=d.getDay()||7; d.setDate(d.getDate()-day+1); return Array.from({length:7},(_,i)=>dateAdd(d.toISOString().slice(0,10),i));}
+export function weekDays(){const d=new Date(); d.setHours(12,0,0,0); const mondayOffset=(d.getDay()+6)%7; d.setDate(d.getDate()-mondayOffset); return Array.from({length:7},(_,i)=>{const copy=new Date(d);copy.setDate(d.getDate()+i);return `${copy.getFullYear()}-${String(copy.getMonth()+1).padStart(2,'0')}-${String(copy.getDate()).padStart(2,'0')}`});}
